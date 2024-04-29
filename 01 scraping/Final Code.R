@@ -66,4 +66,13 @@ total_tourism <- sum(all_articles$tourism_count, na.rm = TRUE)
 cat("Total mentions of 'War':", total_war, "\n")
 cat("Total mentions of 'Tourism':", total_tourism, "\n")
 
+# Total mentions of 'War': 5603 
+# War arcticles 992 obs
 
+# Total mentions of 'Tourism': 469
+# Tourism arcticles 147 obs
+
+# Code for check up
+war_articles <- all_articles[grep("\\bWar\\b", all_articles$body_text, ignore.case = TRUE), ]
+
+tourism_articles <- all_articles[grep("\\bTourism\\b", all_articles$body_text, ignore.case = TRUE), ]
