@@ -1,0 +1,154 @@
+---
+title: "Data"
+author: "Diana, Heini, David"
+date: "2024-04-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+#   We load the package
+```{r}
+library(jsonlite)
+```
+
+
+
+#   We want to get the data from guardian journals
+```{r}
+get_guardian_data <- function(page_number) {
+  query_params <- list(
+    "api-key" = api_key,
+    "q" = "Balkan",
+    "page" = page_number,
+    "page-size" = 200,  # Maximum number of articles allowed per page
+    "show-fields" = "body",  # Get the full article text
+    "from-date" = "1999-01-01"  # From this date
+  )
+  
+  response <- GET(url, query = query_params)
+  data <- content(response, "text", encoding = "UTF-8")
+  parsed_data <- fromJSON(data)
+  if (!is.null(parsed_data$response$results)) {
+    # Avoid duplicate row.names
+    df <- as.data.frame(parsed_data$response$results)
+    rownames(df) <- NULL
+    return(df)
+  } else {
+    return(data.frame())  # Returns empty DataFrame if no results
+  }
+}
+```
+
+
+#   Then we collect the data and process them together
+```{r}
+all_pages <- lapply(1:10, get_guardian_data)  # An example to call only the first 10 pages
+all_articles <- bind_rows(all_pages)
+```
+
+
+#   Check the first few entries in the 'fields' column
+```{r}
+if (!is.null(all_articles$fields) && length(all_articles$fields) > 0) {
+  print(str(all_articles$fields[1]))
+}
+```
+
+
+#   Then we extract the 'body' of the text
+```{r}
+all_articles$body_text <- all_articles$fields$body
+```
+
+
+#   Counting the words 'War' and 'Tourism' while ignoring capitalization
+```{r}
+all_articles$war_count <- str_count(all_articles$body_text, regex("\\bWar\\b", ignore_case = TRUE))
+
+all_articles$tourism_count <- str_count(all_articles$body_text, regex("\\bTourism\\b", ignore_case = TRUE))
+```
+
+
+#   Sum up the countings for each word
+```{r}
+total_war <- sum(all_articles$war_count, na.rm = TRUE)
+total_tourism <- sum(all_articles$tourism_count, na.rm = TRUE)
+```
+
+
+#   Execute the totals
+#   Here we see that in all the articles the word 'war' was mentioned 5603 times. So of         course when an article wrote about 'war' it mentions the word many times.
+#   Total mentions of 'war' : 5603
+#   Total mentions of 'tourism' : 469
+```{r}
+cat("Total mentions of 'War':", total_war, "\n")
+
+cat("Total mentions of 'Tourism':", total_tourism, "\n")
+
+```
+
+
+#   That's why we need the amount of articles in which the word was mentioned at least once.
+#   This gives a better overview.
+```{r}
+war_articles <- all_articles[grep("\\bWar\\b", all_articles$body_text, ignore.case = TRUE), ]
+
+tourism_articles <- all_articles[grep("\\bTourism\\b", all_articles$body_text, ignore.case = TRUE), ]
+
+```
+
+
+#   Let's count the totals
+```{r}
+num_articles <- nrow(war_articles)
+print(num_articles) #992 articles which contain the word 'war' at least once
+
+num_articles2 <- nrow(tourism_articles)
+print(num_articles2) #147 articles which contain the word 'tourism' at least once
+
+
+```
+
+
+#   Let's create a barplot
+```{r}
+article_counts <- c(war = num_articles, tourism = num_articles2)
+
+barplot(article_counts,
+        main = "Comparison of War Articles and Tourism Articles in Balkan region",
+        xlab = "Article Category",
+        ylab = "Number of Articles",
+        col = c("darkred", "darkgreen"),
+        border = "black",
+        beside = TRUE)
+```
+
+
+
+
+
+
