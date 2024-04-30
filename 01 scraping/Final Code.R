@@ -58,4 +58,3 @@ if (!is.null(all_articles$fields) && length(all_articles$fields) > 0) {
 
 # Extrahieren des Textes aus der 'body' Spalte
 all_articles$body_text <- all_articles$fields$body
-
