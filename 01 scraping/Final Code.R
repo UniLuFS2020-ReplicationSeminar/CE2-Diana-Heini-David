@@ -1,13 +1,19 @@
+library(httr)
+library(jsonlite)
+library(tidyverse)
+library(rvest)
+
+
 rm(list = ls())
 
 # CSV-Datei ohne Kopfzeile einlesen
-api_key_data <- read.csv("C:\\Users\\David W\\Desktop\\api_key.csv", header = FALSE)
+api_key_data <- read.csv("api_key.csv", header = FALSE)
 
 # API-Schlüssel extrahieren
 api_key <- api_key_data$V1[1]  # V1 ist der Standardname für die erste Spalte, wenn keine Kopfzeile vorhanden ist
 
 # API-Endpunkt
-url <- "https://content.guardianapis.com/search?api-key=test"
+url <- "https://content.guardianapis.com/search"
 
 # API-Anfrage mit dem geladenen API-Schlüssel
 response <- GET(url, query = list("api-key" = api_key, "q" = "Balkan", "from-date" = "1999-01-01", "page-size" = 200))
@@ -52,27 +58,3 @@ if (!is.null(all_articles$fields) && length(all_articles$fields) > 0) {
 
 # Extrahieren des Textes aus der 'body' Spalte
 all_articles$body_text <- all_articles$fields$body
-
-
-# Zählen der Wörter 'War' und 'Tourism' unter Ignorierung der Groß-/Kleinschreibung
-all_articles$war_count <- str_count(all_articles$body_text, regex("\\bWar\\b", ignore_case = TRUE))
-all_articles$tourism_count <- str_count(all_articles$body_text, regex("\\bTourism\\b", ignore_case = TRUE))
-
-# Gesamtzählungen
-total_war <- sum(all_articles$war_count, na.rm = TRUE)
-total_tourism <- sum(all_articles$tourism_count, na.rm = TRUE)
-
-# Ausgabe
-cat("Total mentions of 'War':", total_war, "\n")
-cat("Total mentions of 'Tourism':", total_tourism, "\n")
-
-# Total mentions of 'War': 5603 
-# War arcticles 992 obs
-
-# Total mentions of 'Tourism': 469
-# Tourism arcticles 147 obs
-
-# Code for check up
-war_articles <- all_articles[grep("\\bWar\\b", all_articles$body_text, ignore.case = TRUE), ]
-
-tourism_articles <- all_articles[grep("\\bTourism\\b", all_articles$body_text, ignore.case = TRUE), ]
