@@ -1,0 +1,74 @@
+---
+title: "Scraping Process"
+author: "Diana, Heini, David"
+date: "2024-04-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+#   First we load our packages:
+```{r}
+library(rvest)
+library(tidyverse)
+library(httr)
+```
+
+```{r}
+rm(list = ls())
+```
+
+#   We now read API-key but hiding it. This step is crucial as we don't want that others see     the key!
+#   Read CSV file without header
+```{r}
+setwd("C:/Users/diana/Documents/Uni_Luzern/Master Computational Social Science/2. Semester/Data Mining with R/CE2-Diana-Heini-David")
+getwd()
+
+api_key_data <- read.csv("api_key.csv", header = FALSE)
+```
+
+
+#   We extract API Key
+
+#   V1 is the default name for the first column if there is no header row
+```{r}
+api_key <- api_key_data$V1[1]
+```
+
+
+#   Make the API endpoints, so we define the URL
+```{r}
+url <- "https://content.guardianapis.com/search?api-key=test"
+```
+
+
+#   API request with the loaded API key
+```{r}
+response <- GET(url, query = list("api-key" = api_key, "q" = "Balkan", "from-date" = "1999-01-01", "page-size" = 200))
+```
+
+
+#   We then process the response
+#   We see all the articles printed in the console with their URL
+```{r}
+content <- content(response, "text")
+print(content)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
