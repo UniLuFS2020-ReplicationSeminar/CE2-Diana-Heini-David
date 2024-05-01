@@ -9,66 +9,188 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Project rundown
 
+## Scraping Process
 
-#   First we load our packages:
-```{r}
-library(rvest)
-library(tidyverse)
+First we load our packages:
+
+```{r, results="hide"}
 library(httr)
+library(jsonlite)
+library(tidyverse)
+library(rvest)
+library(stringr)
 ```
 
-```{r}
-rm(list = ls())
-```
+We now read API-key but hiding it. This step is crucial as we don't want that others see the key!
 
-#   We now read API-key but hiding it. This step is crucial as we don't want that others see     the key!
-#   Read CSV file without header
+Read CSV file without header
+
 ```{r}
-setwd("C:/Users/diana/Documents/Uni_Luzern/Master Computational Social Science/2. Semester/Data Mining with R/CE2-Diana-Heini-David")
-getwd()
 
 api_key_data <- read.csv("api_key.csv", header = FALSE)
 ```
 
+We extract API Key
 
-#   We extract API Key
+V1 is the default name for the first column if there is no header row
 
-#   V1 is the default name for the first column if there is no header row
 ```{r}
 api_key <- api_key_data$V1[1]
 ```
 
+Make the API endpoints, so we define the URL
 
-#   Make the API endpoints, so we define the URL
 ```{r}
-url <- "https://content.guardianapis.com/search?api-key=test"
+url <- "https://content.guardianapis.com/search"
+```
+
+API request with the loaded API key; we want to find all articles with the keyword "Balkan" in the body text
+
+```{r}
+get_guardian_data <- function(page_number) {
+  query_params <- list(
+    "api-key" = api_key,
+    "q" = "Balkan",
+    "page" = page_number,
+    "page-size" = 200,  # MAx articles per request
+    "show-fields" = "body",  # Getting the whole text
+    "from-date" = "1999-01-01"  # From this date
+  )
+  
+  response <- GET(url, query = query_params)
+  data <- content(response, "text", encoding = "UTF-8")
+  parsed_data <- fromJSON(data)
+  if (!is.null(parsed_data$response$results)) {
+    df <- as.data.frame(parsed_data$response$results)
+    rownames(df) <- NULL
+    return(df)
+  } else {
+    return(data.frame())  
+  }
+}
+```
+
+We then process the response
+
+We see all the articles printed in the console with their URL
+
+```{r}
+all_pages <- lapply(1:10, get_guardian_data)  #first 10 pages
+all_articles <- bind_rows(all_pages)
+```
+
+Looking at the first article to see it worked
+
+```{r}
+str(all_articles$fields[1])
+```
+
+#Extracting the texts from the body field
+
+```{r}
+all_articles$body_text <- all_articles$fields$body
+
+#checking how it looks
+all_articles$body_text[1]
+```
+
+## Creating a csv file with only the body text, title and date
+
+subset <- all_articles %>% select(id, webPublicationDate, webTitle, body_text)
+write.csv(subset, "balkan_data.csv", row.names = FALSE)
+
+# Data analysis
+
+```{r}
+
+all_articles <- read.csv("balkan_data.csv", header = TRUE)
+```
+
+Counting the words 'War' and 'Tourism' while ignoring capitalization
+```{r}
+all_articles$war_count <- str_count(all_articles$body_text, regex("\\bWar\\b", ignore_case = TRUE))
+
+all_articles$tourism_count <- str_count(all_articles$body_text, regex("\\bTourism\\b", ignore_case = TRUE))
+```
+
+Sum up the countings for each word
+```{r}
+total_war <- sum(all_articles$war_count, na.rm = TRUE)
+total_tourism <- sum(all_articles$tourism_count, na.rm = TRUE)
 ```
 
 
-#   API request with the loaded API key
+Execute the totals
+
 ```{r}
-response <- GET(url, query = list("api-key" = api_key, "q" = "Balkan", "from-date" = "1999-01-01", "page-size" = 200))
+cat("Total mentions of 'War':", total_war, "\n")
+
+cat("Total mentions of 'Tourism':", total_tourism, "\n")
+
+```
+## Results: 
+
+Total mentions of 'war' : 5603
+Total mentions of 'tourism' : 469
+
+Here we see that in all the articles the word 'war' was mentioned 5603 times. Seems that when the Guardian writes about the Balkan region, the word 'war' is mentioned quite often. Tourism is sometimes written about, but not at all as often.
+
+Checking if the result is different if we only count the keyword per article once. This can give a better overview.
+
+```{r}
+war_articles <- all_articles[grep("\\bWar\\b", all_articles$body_text, ignore.case = TRUE), ]
+
+tourism_articles <- all_articles[grep("\\bTourism\\b", all_articles$body_text, ignore.case = TRUE), ]
+
 ```
 
 
-#   We then process the response
-#   We see all the articles printed in the console with their URL
 ```{r}
-content <- content(response, "text")
-print(content)
+num_articles <- nrow(war_articles)
+print(num_articles) 
+
+num_articles2 <- nrow(tourism_articles)
+print(num_articles2) 
+
+```
+To sum up, this gives 992 articles which contain the word 'war' and 147 articles which contain the word 'tourism'.
+
+## A bar chart to visualise the results
+```{r}
+article_counts <- c(war = num_articles, tourism = num_articles2)
+
+barplot(article_counts,
+        main = "Comparison of War Articles and Tourism Articles in Balkan region",
+        xlab = "Article Category",
+        ylab = "Number of Articles",
+        col = c("darkred", "darkgreen"),
+        border = "black",
+        beside = TRUE)
+
+
 ```
 
+Finally, checking how the mentions on these keywords have changed through time.
 
+```{r}
+war_articles$webPublicationDate <- as.Date(war_articles$webPublicationDate)
+tourism_articles$webPublicationDate <- as.Date(tourism_articles$webPublicationDate)
 
+war_articles <- war_articles %>% group_by(webPublicationDate) %>% summarise(count = n())
+tourism_articles <- tourism_articles %>% group_by(webPublicationDate) %>% summarise(count = n())
+```
 
+```{r}
 
+ggplot() +
+  geom_line(data = war_articles, aes(x = webPublicationDate, y = count, color = "War")) +
+  geom_line(data = tourism_articles, aes(x = webPublicationDate, y = count, color = "Tourism")) +
+  labs(title = "Number of articles by date", x = "Date", y = "Number of articles") +
+  scale_color_manual(values = c("War" = "red", "Tourism" = "blue")) +
+  theme_minimal()
 
+```
 
-
-
-
-
-
-
+There are three "peaks" of war articles in the Balkan region. The first one is around 2008, the second one is around 2011 and the third one is around 2016. The tourism articles are more evenly distributed over the years, with more articles from 2021. 
