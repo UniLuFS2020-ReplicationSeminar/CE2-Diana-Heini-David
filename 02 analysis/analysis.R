@@ -18,10 +18,23 @@ cat("Total mentions of 'Tourism':", total_tourism, "\n")
 # Total mentions of 'Tourism': 469
 # Tourism arcticles 147 obs
 
-# Code for check up
+# Code for checking if results are different if multiple mentions of the same word in an article are ignored
 war_articles <- all_articles[grep("\\bWar\\b", all_articles$body_text, ignore.case = TRUE), ]
 
 tourism_articles <- all_articles[grep("\\bTourism\\b", all_articles$body_text, ignore.case = TRUE), ]
+
+article_counts <- c(war = num_articles, tourism = num_articles2)
+
+#creating a visualisation
+
+barplot(article_counts,
+        main = "Comparison of War Articles and Tourism Articles in Balkan region",
+        xlab = "Article Category",
+        ylab = "Number of Articles",
+        col = c("darkred", "darkgreen"),
+        border = "black",
+        beside = TRUE)
+
 
 # Create a plot of the number of articles mentioning "war" and "tourism" by the article date
 
