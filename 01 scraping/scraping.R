@@ -51,7 +51,9 @@ all_articles$body_text <- all_articles$fields$body
 #checking how it looks
 all_articles$body_text[1]
 
+#creating a csv file with only the body text, title and date
 
-
+subset <- all_articles %>% select(id, webPublicationDate, webTitle, body_text)
+write.csv(subset, "balkan_data.csv", row.names = FALSE)
 
 
